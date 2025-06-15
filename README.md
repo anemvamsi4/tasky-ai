@@ -3,7 +3,7 @@ An open-to-use command line interface (CLI) for Tasky AI — an AI task manageme
 
 ## Installation
 
-Note: This project is in its early stages and there no CLI yet. But you can test the agent using following steps.
+Note: This project is in its early stages and there is no CLI yet. But you can test the agent using following steps.
 
 1. Clone the repository:
    ```bash
