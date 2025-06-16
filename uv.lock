@@ -1216,7 +1216,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tasky-cli"
+name = "tasky-ai"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
