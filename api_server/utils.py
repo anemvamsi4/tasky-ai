@@ -5,7 +5,7 @@ import logging
 from fastapi import HTTPException, Request
 from starlette.status import HTTP_403_FORBIDDEN
 
-from config import Settings
+from api_server.config import Settings
 
 logger = logging.getLogger(__name__)
 

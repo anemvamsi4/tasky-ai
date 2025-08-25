@@ -1,12 +1,11 @@
 import json
 import logging
-from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, Request, Response, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 
@@ -22,25 +21,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-settings = Settings()  # Load settings from config
+settings = Settings()
 
 @app.get("/webhook")
 async def verify_webhook(
-    mode: Optional[str] = None,
-    token: Optional[str] = None,
-    challenge: Optional[str] = None
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token"),
+    hub_challenge: str = Query(None, alias="hub.challenge")
 ):
     """Handle webhook verification from WhatsApp."""
-    if not all([mode, token]):
+    # Log the received parameters
+    logger.info(f"Received verification request - Mode: {hub_mode}, Token: {hub_verify_token}, Challenge: {hub_challenge}")
+    
+    if not all([hub_mode, hub_verify_token, hub_challenge]):
         logger.info("Missing parameters in verification request")
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail="Missing parameters"
         )
 
-    if mode == "subscribe" and token == settings.VERIFY_TOKEN:
+    if hub_mode == "subscribe" and hub_verify_token == settings.VERIFY_TOKEN:
         logger.info("Webhook verified successfully")
-        return Response(content=challenge, media_type="text/plain")
+        return Response(content=hub_challenge, media_type="text/plain")
     
     logger.warning("Webhook verification failed")
     raise HTTPException(
@@ -63,7 +65,7 @@ async def handle_webhook(
 
     try:
         body = await request.json()
-    except json.JSONDecodeError:
+    except ValueError:
         logger.error("Failed to decode JSON")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON")
 
@@ -78,7 +80,7 @@ async def handle_webhook(
     # Process WhatsApp messages
     if is_valid_whatsapp_message(body):
 
-        # Parse recieved message from user 
+        # Parse received message from user 
         data = await parse_whatsapp_message(body)
 
         contact_name = data.get("username")
@@ -93,11 +95,12 @@ async def handle_webhook(
         # Call Tasky Agent and get response
         agent_response = await call_tasky(
             user_id=user_id,
-            message=message_text
+            message=message_text,
+            settings=settings
         )
 
         # Send response back to WhatsApp
-        await send_whatsapp_message(phone_number, agent_response)
+        await send_whatsapp_message(phone_number, agent_response, settings)
         return JSONResponse(content={"status": "ok"}, status_code=HTTP_200_OK)
     
     logger.warning("Invalid WhatsApp API event")

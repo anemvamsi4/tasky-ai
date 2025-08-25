@@ -4,7 +4,7 @@ from typing import Dict, Any
 import aiohttp
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
-from config import Settings
+from api_server.config import Settings
 
 logger = logging.getLogger(__name__)
 
