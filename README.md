@@ -62,6 +62,8 @@ docker run -p 8080:8080 tasky-ai
 
 This project is actively maintained and under development. Contributions are welcome.
 
+> **Note**: Real-world testing of the WhatsApp integration is coming soon, pending Meta Business verification. This verification is required to move the WhatsApp integration from development to production status.
+
 ## License
 
 Tasky AI © 2025 by [Vamsi Anem](https://github.com/anemvamsi4) is licensed under 
