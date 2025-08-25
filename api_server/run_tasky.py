@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types
@@ -8,12 +9,12 @@ from tasky_agent import root_agent
 
 logger = logging.getLogger(__name__)
 
-async def call_tasky(user_id: str, message: str, settings: Settings) -> str:
+async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
     """
     Execute Tasky agent with user message and return response.
     
     Args:
-        user_id: Unique identifier for the user
+        user_id: Unique identifier for the user as UUID
         message: User's input message
         settings: Application settings
     

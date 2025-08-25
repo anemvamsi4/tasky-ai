@@ -1,5 +1,5 @@
 # Use Python 3.12 slim base image
-FROM python/3.12-slim
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -23,7 +23,7 @@ COPY main.py ./
 
 # Set environment variables
 ENV PORT=8080
-ENV ENV=production
 
 # Run the application
-CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT}
+ENTRYPOINT ["sh", "-c"]
+CMD ["uvicorn main:app --host 0.0.0.0 --port $PORT"]

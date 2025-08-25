@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -110,4 +111,6 @@ async def handle_webhook(
     )
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Use PORT environment variable with default of 8080
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
