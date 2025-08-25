@@ -1,6 +1,5 @@
-import sqlite3
-from datetime import datetime
 import os
+from datetime import datetime
 from supabase import create_client, Client
 
 def parse_date(date_str):
