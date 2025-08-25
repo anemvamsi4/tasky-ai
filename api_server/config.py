@@ -17,5 +17,4 @@ class Settings(BaseSettings):
     SESSIONS_DATABASE_URL: str
     
     # Google ADK Configuration
-    GOOGLE_PROJECT_ID: str
     GOOGLE_API_KEY: str
