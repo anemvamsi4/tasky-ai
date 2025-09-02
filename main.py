@@ -54,7 +54,7 @@ async def verify_webhook(
 @app.post("/webhook")
 async def handle_webhook(
     request: Request,
-    verified: bool = Depends(verify_whatsapp_signature)
+    verified: bool = Depends(lambda req: verify_whatsapp_signature(req, settings))
 ):
     """Handle incoming webhook events from WhatsApp."""
     if not verified:
