@@ -48,7 +48,7 @@ def get_user_id_by_phone(phone_number: str, username: str) -> UUID:
             )
         
     except Exception as e:
-        logger.error(f"Error in get_user_id_by_phone: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_user_id_by_phone: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Database operation failed"

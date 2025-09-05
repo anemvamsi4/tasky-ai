@@ -31,83 +31,100 @@ async def verify_webhook(
     hub_challenge: str = Query(None, alias="hub.challenge")
 ):
     """Handle webhook verification from WhatsApp."""
-    # Log the received parameters
-    logger.info(f"Received verification request - Mode: {hub_mode}, Token: {hub_verify_token}, Challenge: {hub_challenge}")
-    
     if not all([hub_mode, hub_verify_token, hub_challenge]):
-        logger.info("Missing parameters in verification request")
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
             detail="Missing parameters"
         )
 
     if hub_mode == "subscribe" and hub_verify_token == settings.VERIFY_TOKEN:
-        logger.info("Webhook verified successfully")
         return Response(content=hub_challenge, media_type="text/plain")
     
-    logger.warning("Webhook verification failed")
     raise HTTPException(
         status_code=HTTP_403_FORBIDDEN,
         detail="Verification failed"
     )
 
 @app.post("/webhook")
-async def handle_webhook(
-    request: Request,
-    verified: bool = Depends(lambda req: verify_whatsapp_signature(req, settings))
-):
+async def handle_webhook(request: Request):
     """Handle incoming webhook events from WhatsApp."""
-    if not verified:
-        logger.warning("Failed WhatsApp signature verification")
-        raise HTTPException(
-            status_code=HTTP_403_FORBIDDEN, 
-            detail="Invalid signature"
-        )
-
+    # Store the original request body for signature verification
+    body_bytes = await request.body()
+    
+    # Verify signature
     try:
-        body = await request.json()
+        from starlette.requests import Request as StarletteRequest
+        new_request = StarletteRequest(
+            scope=request.scope,
+            receive=request._receive
+        )
+        setattr(new_request, "_body", body_bytes)
+        
+        verified = await verify_whatsapp_signature(new_request, settings)
+        if not verified and not settings.DEBUG_MODE:
+            return JSONResponse(
+                content={"status": "error", "detail": "Invalid signature"}, 
+                status_code=HTTP_403_FORBIDDEN
+            )
+    except Exception as e:
+        if not settings.DEBUG_MODE:
+            return JSONResponse(
+                content={"status": "error", "detail": "Signature verification failed"}, 
+                status_code=HTTP_403_FORBIDDEN
+            )
+    
+    try:
+        # Parse the body as JSON
+        body = json.loads(body_bytes)
     except ValueError:
-        logger.error("Failed to decode JSON")
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON")
+        return JSONResponse(
+            content={"status": "error", "detail": "Invalid JSON"}, 
+            status_code=HTTP_400_BAD_REQUEST
+        )
 
     # Handle WhatsApp status updates
     if (body.get("entry", [{}])[0]
             .get("changes", [{}])[0]
             .get("value", {})
             .get("statuses")):
-        logger.info("Received WhatsApp status update")
         return JSONResponse(content={"status": "ok"}, status_code=HTTP_200_OK)
 
     # Process WhatsApp messages
     if is_valid_whatsapp_message(body):
+        try:
+            # Parse received message from user 
+            data = await parse_whatsapp_message(body)
 
-        # Parse received message from user 
-        data = await parse_whatsapp_message(body)
+            contact_name = data.get("username")
+            phone_number = data.get("phone_number")
+            message_text = data.get("message")
 
-        contact_name = data.get("username")
-        phone_number = data.get("phone_number")
-        message_text = data.get("message")
+            user_id = get_user_id_by_phone(
+                phone_number=phone_number,
+                username=contact_name
+            )
 
-        user_id = get_user_id_by_phone(
-            phone_number=phone_number,
-            username=contact_name
-        )
+            # Call Tasky Agent and get response
+            agent_response = await call_tasky(
+                user_id=user_id,
+                message=message_text,
+                settings=settings
+            )
 
-        # Call Tasky Agent and get response
-        agent_response = await call_tasky(
-            user_id=user_id,
-            message=message_text,
-            settings=settings
-        )
-
-        # Send response back to WhatsApp
-        await send_whatsapp_message(phone_number, agent_response, settings)
-        return JSONResponse(content={"status": "ok"}, status_code=HTTP_200_OK)
+            # Send response back to WhatsApp
+            await send_whatsapp_message(phone_number, agent_response, settings)
+            return JSONResponse(content={"status": "ok"}, status_code=HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error processing message: {str(e)}")
+            return JSONResponse(
+                content={"status": "ok"}, 
+                status_code=HTTP_200_OK
+            )
     
-    logger.warning("Invalid WhatsApp API event")
-    raise HTTPException(
-        status_code=HTTP_404_NOT_FOUND,
-        detail="Not a WhatsApp API event"
+    # Return 200 even for invalid events to prevent WhatsApp from deactivating the webhook
+    return JSONResponse(
+        content={"status": "ok"}, 
+        status_code=HTTP_200_OK
     )
 
 if __name__ == "__main__":

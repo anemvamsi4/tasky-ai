@@ -19,34 +19,55 @@ async def parse_whatsapp_message(body: Dict[str, Any]) -> Dict[str, str]:
         Dictionary containing username, phone number and message text
     """
     try:
-        message_data = (body.get("entry", [{}])[0]
-                       .get("changes", [{}])[0]
-                       .get("value", {})
-                       .get("messages", [{}])[0])
+        # Extract entry
+        entry = body.get("entry", [])
+        if not entry or len(entry) == 0:
+            return {"username": "Unknown User", "phone_number": "", "message": ""}
+            
+        # Extract changes
+        changes = entry[0].get("changes", [])
+        if not changes or len(changes) == 0:
+            return {"username": "Unknown User", "phone_number": "", "message": ""}
+            
+        # Extract value
+        value = changes[0].get("value", {})
+        if not value:
+            return {"username": "Unknown User", "phone_number": "", "message": ""}
+            
+        # Extract messages
+        messages = value.get("messages", [])
+        if not messages or len(messages) == 0:
+            return {"username": "Unknown User", "phone_number": "", "message": ""}
+            
+        # Extract the first message
+        message_data = messages[0]
         
         # Get the sender's phone number
         phone_number = message_data.get("from", "")
         
         # Get the message text
-        message_text = message_data.get("text", {}).get("body", "")
-        
+        message_text = ""
+        if message_data.get("type") == "text":
+            message_text = message_data.get("text", {}).get("body", "")
+            
         # Get contact name if available
-        contact_name = (body.get("entry", [{}])[0]
-                       .get("changes", [{}])[0]
-                       .get("value", {})
-                       .get("contacts", [{}])[0]
-                       .get("profile", {})
-                       .get("name", "Unknown User"))
+        contact_name = "Unknown User"
+        contacts = value.get("contacts", [])
+        if contacts and len(contacts) > 0:
+            contact_name = contacts[0].get("profile", {}).get("name", "Unknown User")
         
         return {
             "username": contact_name,
             "phone_number": phone_number,
             "message": message_text
         }
-    except (KeyError, IndexError) as e:
-        logger.error(f"Error parsing WhatsApp message: {e}")
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, 
-                          detail="Invalid message format")
+    except (KeyError, IndexError, TypeError) as e:
+        # Return default values on error
+        return {
+            "username": "Unknown User",
+            "phone_number": "",
+            "message": ""
+        }
 
 async def send_whatsapp_message(phone_number: str, message: str, settings: Settings) -> bool:
     """
@@ -55,6 +76,7 @@ async def send_whatsapp_message(phone_number: str, message: str, settings: Setti
     Args:
         phone_number: The recipient's phone number
         message: The message text to send
+        settings: Application settings
         
     Returns:
         bool: True if message was sent successfully, False otherwise

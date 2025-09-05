@@ -25,11 +25,14 @@ async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
         Exception: If agent fails to generate response
     """
     try:
+        # Convert UUID to string to avoid type conflicts
+        user_id_str = str(user_id)
+        
         runner = _initialize_runner(settings.SESSIONS_DATABASE_URL)
-        session_id = get_session_id(user_id, settings.SESSIONS_DATABASE_URL)
+        session_id = await get_session_id(user_id, settings.SESSIONS_DATABASE_URL)
         
         async for event in runner.run_async(
-            user_id=user_id,
+            user_id=user_id_str,
             session_id=session_id,
             new_message=_create_user_message(message)
         ):
@@ -39,10 +42,10 @@ async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
         raise Exception("No response generated from agent")
         
     except Exception as e:
-        logger.error(f"Error in call_tasky: {str(e)}", exc_info=True)
+        logger.error(f"Error in call_tasky: {str(e)}")
         raise
 
-def get_session_id(user_id: str, db_url: str) -> str:
+async def get_session_id(user_id: UUID, db_url: str) -> str:
     """
     Get or create a session ID for the user.
     
@@ -54,22 +57,27 @@ def get_session_id(user_id: str, db_url: str) -> str:
         str: Session ID
     """
     try:
+        # Convert UUID to string to avoid type conflicts with the database
+        user_id_str = str(user_id)
+        
         session_service = DatabaseSessionService(db_url=db_url)
-        session = session_service.get_session(
+        session = await session_service.get_session(
             app_name='tasky-ai',
-            user_id=user_id
+            user_id=user_id_str,
+            session_id=user_id_str
         )
         
         if not session:
-            session = session_service.create_session(
+            session = await session_service.create_session(
                 app_name='tasky-ai',
-                user_id=user_id
+                user_id=user_id_str,
+                session_id=user_id_str
             )
             
-        return session.session_id
+        return session.id
         
     except Exception as e:
-        logger.error(f"Error in get_session_id: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_session_id: {str(e)}")
         raise
 
 def _initialize_runner(db_url: str) -> Runner:
