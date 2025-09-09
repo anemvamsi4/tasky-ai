@@ -2,6 +2,9 @@
 
 An AI-powered task management system that operates through WhatsApp, built using Google's ADK (Agent Development Kit) for Python.
 
+**🔗 Landing Page: [https://tasky-ai.krishna-vamsi.me](https://tasky-ai.krishna-vamsi.me)**
+**💬 Start Chatting: [wa.me/917680835913](https://wa.me/917680835913)**
+
 ## Overview
 
 Tasky AI is an intelligent task management agent that helps users organize and manage their tasks efficiently through natural language conversations on WhatsApp. The system uses language models to understand user intent and manage tasks accordingly with database integration.
@@ -58,11 +61,24 @@ docker run -p 8080:8080 tasky-ai
 - Voice message input support
 - Smart reminders and notifications
 
+## How to Use the WhatsApp Bot
+
+1. Visit the [Tasky AI Landing Page](https://tasky-ai.krishna-vamsi.me) for information on how to get started
+2. Click the WhatsApp button on the landing page or use this direct link: [wa.me/917680835913](https://wa.me/917680835913)
+3. Start a conversation with Tasky AI on WhatsApp
+4. Use natural language to create, update, view, and manage your tasks
+
+Example commands:
+- "Create a task to finish the presentation by tomorrow afternoon"
+- "Show me all my pending tasks"
+- "Mark the meeting with John as completed"
+- "What are my high priority tasks due this week?"
+
 ## Development Status
 
 This project is actively maintained and under development. Contributions are welcome.
 
-> **Note**: Real-world testing of the WhatsApp integration is coming soon, pending Meta Business verification. This verification is required to move the WhatsApp integration from development to production status.
+The WhatsApp bot is now fully functional and operational. Users can interact with Tasky AI through WhatsApp to manage their tasks using natural language commands.
 
 ## License
 
