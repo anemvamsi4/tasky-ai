@@ -5,11 +5,11 @@ from google.adk.tools import ToolContext
 from tasky_agent.utils import connect_db, parse_date
 
 class GetTaskInput(BaseModel):
-    working_dt: Optional[str] = None  # Format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
-    due_dt: Optional[str] = None  # Format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
-    status: Optional[str] = None  # pending, in_progress, completed, archived
-    priority: Optional[int] = None  # 1=high, 2=medium, 3=low
-    tags: Optional[List[str]] = None  # List of tags to filter by
+    working_dt: Optional[str] = None
+    due_dt: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+    tags: Optional[List[str]] = None
 
 def get_tasks(filters: Optional[Dict[str, Any]], tool_context: ToolContext) -> Dict[str, Any]:
     """Retrieves tasks from the User's tasks database based on provided filters.
@@ -29,21 +29,36 @@ def get_tasks(filters: Optional[Dict[str, Any]], tool_context: ToolContext) -> D
             - tasks: List of task objects, each containing task_id (UUID) for update/delete operations
             - count: Number of tasks returned
     """
-    supabase = connect_db()
-    user_id = tool_context._invocation_context.user_id
-    
+    try:
+        supabase = connect_db()
+        user_id = tool_context._invocation_context.user_id
+        
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "User ID not found in context"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Database connection failed: {str(e)}"
+        }
+
     if filters is None:
         filters = {}
     
     try:
-        # Validate and parse the filters
-        filter_model = GetTaskInput(**filters)
-        validated_filters = {k: v for k, v in filter_model.model_dump().items() if v is not None}
+        try:
+            filter_model = GetTaskInput(**filters)
+            validated_filters = {k: v for k, v in filter_model.model_dump().items() if v is not None}
+        except Exception as validation_error:
+            return {
+                "status": "error",
+                "message": f"Filter validation error: {str(validation_error)}"
+            }
         
-        # Start building the Supabase query
         query = supabase.table("tasks").select("*").eq("user_id", user_id)
         
-        # Apply filters
         for key, value in validated_filters.items():
             if key == 'tags':
                 for tag in value:
@@ -62,11 +77,15 @@ def get_tasks(filters: Optional[Dict[str, Any]], tool_context: ToolContext) -> D
             
             query = query.eq(key, value)
         
-        # Execute the query
-        response = query.execute()
-        tasks = response.data
+        try:
+            response = query.execute()
+            tasks = response.data if response.data else []
+        except Exception as query_error:
+            return {
+                "status": "error",
+                "message": f"Database query error: {str(query_error)}"
+            }
 
-        # Format the response
         formatted_tasks = []
         for task in tasks:
             formatted_task = {

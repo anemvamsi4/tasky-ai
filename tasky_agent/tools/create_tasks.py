@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
@@ -8,12 +8,38 @@ from tasky_agent.utils import connect_db, parse_date
 class TaskInput(BaseModel):
     title: str
     description: Optional[str] = None
-    status: Optional[str] = "pending"  # pending, in_progress, completed, archived
-    due_dt: Optional[str] = None  # Format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
-    working_dt: Optional[str] = None  # Format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
-    duration_mins: Optional[int] = 0  # Duration in minutes
-    priority: Optional[int] = 2  # 1=high, 2=medium, 3=low
-    tags: Optional[List[str]] = None  # List of tags associated with the task
+    status: Optional[str] = "pending"
+    due_dt: Optional[str] = None
+    working_dt: Optional[str] = None
+    duration_mins: Optional[int] = 0
+    priority: Optional[int] = 2
+    tags: Optional[List[str]] = None
+
+    @validator('title')
+    def title_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Title cannot be empty')
+        if len(v.strip()) > 255:
+            raise ValueError('Title cannot exceed 255 characters')
+        return v.strip()
+
+    @validator('status')
+    def status_must_be_valid(cls, v):
+        if v and v not in ['pending', 'in_progress', 'completed', 'archived']:
+            raise ValueError('Status must be one of: pending, in_progress, completed, archived')
+        return v
+
+    @validator('priority')
+    def priority_must_be_valid(cls, v):
+        if v is not None and v not in [1, 2, 3]:
+            raise ValueError('Priority must be 1 (high), 2 (medium), or 3 (low)')
+        return v
+
+    @validator('duration_mins')
+    def duration_must_be_positive(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Duration must be non-negative')
+        return v
 
 def create_tasks(tasks: List[Dict[str, Any]], tool_context: ToolContext) -> Dict[str, Any]:
     """Inserts one or more tasks in the User's tasks database.
@@ -32,21 +58,43 @@ def create_tasks(tasks: List[Dict[str, Any]], tool_context: ToolContext) -> Dict
     Returns:
         Dict[str, Any]: A dictionary containing the status and message of the operation.
     """
-    supabase = connect_db()
-    user_id = tool_context._invocation_context.user_id
+    if not tasks:
+        return {
+            "status": "error",
+            "message": "No tasks provided to create"
+        }
+
+    try:
+        supabase = connect_db()
+        user_id = tool_context._invocation_context.user_id
+        
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "User ID not found in context"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Database connection failed: {str(e)}"
+        }
     
     try:
-        # Parse and validate the task inputs
         validated_tasks = []
-        for task_data in tasks:
-            task = TaskInput(**task_data)
-            validated_tasks.append(task)
+        for idx, task_data in enumerate(tasks):
+            try:
+                task = TaskInput(**task_data)
+                validated_tasks.append((idx, task))
+            except Exception as validation_error:
+                return {
+                    "status": "error",
+                    "message": f"Validation error for task {idx}: {str(validation_error)}"
+                }
         
         errors = []
         created_count = 0
 
-        for idx, task in enumerate(validated_tasks):
-            # Validate the date formats
+        for idx, task in validated_tasks:
             due_dt = task.due_dt
             working_dt = task.working_dt
 
@@ -72,22 +120,39 @@ def create_tasks(tasks: List[Dict[str, Any]], tool_context: ToolContext) -> Dict
                     })
                     continue
 
-            # Insert the task into Supabase
-            task_data = {
-                "user_id": user_id,
-                "title": task.title,
-                "description": task.description if task.description else None,
-                "status": task.status,
-                "due_dt": due_dt.isoformat() if due_dt else None,
-                "working_dt": working_dt.isoformat() if working_dt else None,
-                "duration_mins": task.duration_mins,
-                "priority": task.priority,
-                "tags": task.tags if task.tags else None,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
+            try:
+                task_data = {
+                    "user_id": user_id,
+                    "title": task.title,
+                    "description": task.description if task.description else None,
+                    "status": task.status,
+                    "due_dt": due_dt.isoformat() if due_dt else None,
+                    "working_dt": working_dt.isoformat() if working_dt else None,
+                    "duration_mins": task.duration_mins,
+                    "priority": task.priority,
+                    "tags": task.tags if task.tags else None,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
 
-            supabase.table("tasks").insert(task_data).execute()
-            created_count += 1
+                response = supabase.table("tasks").insert(task_data).execute()
+                
+                if not response.data:
+                    errors.append({
+                        "task_index": idx,
+                        "title": task.title,
+                        "error": "Failed to insert task into database"
+                    })
+                    continue
+                    
+                created_count += 1
+                
+            except Exception as db_error:
+                errors.append({
+                    "task_index": idx,
+                    "title": task.title,
+                    "error": f"Database error: {str(db_error)}"
+                })
+                continue
 
         result = {
             "status": "success" if created_count > 0 else "error",

@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from google.adk.tools import ToolContext
-from tasky_agent.utils import connect_db
+from tasky_agent.utils import connect_db, validate_uuid
 
 def delete_tasks(task_ids: List[str], tool_context: ToolContext) -> Dict[str, Any]:
     """Deletes multiple tasks from the User's tasks database given their ids.
@@ -11,8 +11,34 @@ def delete_tasks(task_ids: List[str], tool_context: ToolContext) -> Dict[str, An
     Returns:
         Dict[str, Any]: Dictionary containing the status of the operation and details.
     """
-    supabase = connect_db()
-    user_id = tool_context._invocation_context.user_id
+    if not task_ids:
+        return {
+            "status": "error",
+            "message": "No task IDs provided to delete"
+        }
+
+    # Validate all UUIDs first
+    for task_id in task_ids:
+        if not validate_uuid(task_id):
+            return {
+                "status": "error",
+                "message": f"Invalid UUID format for task_id: {task_id}"
+            }
+
+    try:
+        supabase = connect_db()
+        user_id = tool_context._invocation_context.user_id
+        
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "User ID not found in context"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Database connection failed: {str(e)}"
+        }
     
     try:
         results = {
@@ -21,33 +47,44 @@ def delete_tasks(task_ids: List[str], tool_context: ToolContext) -> Dict[str, An
         }
         
         for task_id in task_ids:
-            # Check if the task exists and belongs to the user
-            task = supabase.table("tasks")\
-                .select("*")\
-                .eq("id", task_id)\
-                .eq("user_id", user_id)\
-                .execute()
-                
-            if not task.data:
+            try:
+                task = supabase.table("tasks")\
+                    .select("*")\
+                    .eq("id", task_id)\
+                    .eq("user_id", user_id)\
+                    .execute()
+                    
+                if not task.data:
+                    results["failed_deletes"].append({
+                        "task_id": task_id,
+                        "reason": f"Task with ID {task_id} not found or unauthorized"
+                    })
+                    continue
+            except Exception as check_error:
                 results["failed_deletes"].append({
                     "task_id": task_id,
-                    "reason": f"Task with ID {task_id} not found or unauthorized"
+                    "reason": f"Database error checking task existence: {str(check_error)}"
                 })
                 continue
             
-            # Delete the task
-            delete_result = supabase.table("tasks")\
-                .delete()\
-                .eq("id", task_id)\
-                .eq("user_id", user_id)\
-                .execute()
-            
-            if delete_result.data:
-                results["successful_deletes"].append(task_id)
-            else:
+            try:
+                delete_result = supabase.table("tasks")\
+                    .delete()\
+                    .eq("id", task_id)\
+                    .eq("user_id", user_id)\
+                    .execute()
+                
+                if delete_result.data:
+                    results["successful_deletes"].append(task_id)
+                else:
+                    results["failed_deletes"].append({
+                        "task_id": task_id,
+                        "reason": "Delete operation returned no data"
+                    })
+            except Exception as delete_error:
                 results["failed_deletes"].append({
                     "task_id": task_id,
-                    "reason": "Failed to delete"
+                    "reason": f"Database delete error: {str(delete_error)}"
                 })
         
         return {
