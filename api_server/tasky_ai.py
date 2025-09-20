@@ -1,10 +1,11 @@
 import logging
 from uuid import UUID
+from google.genai import Client
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types
 
-from config import Settings
+from config import Settings, _settings
 from tasky_agent import root_agent
 
 logger = logging.getLogger(__name__)
@@ -94,3 +95,35 @@ def _create_user_message(message: str) -> types.Content:
         role='user',
         parts=[types.Part(text=message)]
     )
+
+def generate_daily_summary(date: str, user_name: str, tasks: list) -> str:
+    """Generate a daily summary using Google Generative AI."""
+    
+    prompt = f"""
+    You are an AI assistant that generates a clear and concise daily summary for a user named {user_name}.
+    Today's date is {date}.
+    Here are the tasks for today:
+    {tasks}
+
+    INSTRUCTIONS:
+    - If user name is not provided accurately, use a generic greeting.
+    - Summarize the tasks in a friendly and engaging manner.
+    - Highlight any important or urgent tasks.
+    - Generate in Plain Text only, no markdown and seperate sections with new lines.
+    - Keep it Short and clear with simple language.
+    - It should motivate the user to complete their tasks in a creative way.
+    - Avoid using bullet points or numbered lists.
+    """
+
+    try:
+        genai_client = Client(api_key=_settings.GOOGLE_GENAI_API_KEY)
+        response = genai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            max_output_tokens=500,
+            temperature=0.7
+        )
+
+        return response.text
+    except Exception as e:
+        raise RuntimeError(f"Failed to generate summary: {str(e)}")
