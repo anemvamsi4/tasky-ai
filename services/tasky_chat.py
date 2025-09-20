@@ -2,10 +2,10 @@ import json
 import logging
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, Depends, Query
+from fastapi import FastAPI, Request, Response, HTTPException, Query
 from fastapi.responses import JSONResponse
 from starlette.requests import Request as StarletteRequest
-from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 
 from config import _settings
 from api_server.whatsapp import parse_whatsapp_message, send_whatsapp_message
