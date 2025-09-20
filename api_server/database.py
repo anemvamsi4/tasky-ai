@@ -78,3 +78,44 @@ def get_user_id_by_phone(phone_number: str, username: str) -> UUID:
             status_code=500,
             detail="Database operation failed"
         )
+def get_users_tasks_by_date(date: str) -> list:
+    """
+    Get a list of users with their phone numbers and tasks for a specific date.
+    
+    Args:
+        date (str): Date in YYYY-MM-DD format
+        
+    Returns:
+        list: List of dictionaries containing user and task information
+        
+    Raises:
+        HTTPException: If database operation fails
+    """
+    try:
+        supabase = connect_db()
+        
+        # Fetch all users
+        users_query = supabase.table("users").select("id, username, phone_number, contact_name").execute()
+        users = users_query.data
+        
+        # Fetch all tasks for the date
+        tasks_query = supabase.table("tasks").select("id, title, description, status, duration_mins, user_id")\
+            .eq("working_dt", date).execute()
+        tasks = tasks_query.data
+        
+        # Map tasks to users
+        user_map = {user["id"]: user for user in users}
+        for user in user_map.values():
+            user["tasks"] = []
+        
+        for task in tasks:
+            user_map[task["user_id"]]["tasks"].append(task)
+        
+        return list(user_map.values())
+    
+    except Exception as e:
+        logger.exception("Error in get_users_tasks_by_date")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve user tasks"
+        )
