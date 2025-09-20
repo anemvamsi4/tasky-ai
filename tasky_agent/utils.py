@@ -5,7 +5,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import Settings
+from config import _settings
 
 def parse_date(date_str):
     """Parse a date string into a datetime object."""
@@ -33,10 +33,9 @@ def validate_uuid(uuid_str):
 def connect_db():
     """Connect to the Supabase database."""
     try:
-        settings = Settings()
-        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+        if not _settings.SUPABASE_URL or not _settings.SUPABASE_KEY:
             raise ValueError("Missing Supabase configuration")
-        supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        supabase: Client = create_client(_settings.SUPABASE_URL, _settings.SUPABASE_KEY)
         return supabase
     except Exception as e:
         raise ConnectionError(f"Failed to connect to database: {str(e)}")

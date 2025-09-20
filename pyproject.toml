@@ -5,6 +5,7 @@ description = "An AI task manager on WhatsApp"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiohttp>=3.12.15",
     "dotenv>=0.9.9",
     "fastapi>=0.116.1",
     "google-adk>=1.14.1",
