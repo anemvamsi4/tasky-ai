@@ -12,21 +12,13 @@ logger = logging.getLogger(__name__)
 
 async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
     """
-    Execute Tasky agent with user message and return response.
+    Send a user's message to our AI agent and get back a helpful response.
     
-    Args:
-        user_id: Unique identifier for the user as UUID
-        message: User's input message
-        settings: Application settings
-    
-    Returns:
-        str: Agent's response message
-        
-    Raises:
-        Exception: If agent fails to generate response
+    This is where the conversation magic happens. We maintain session state
+    so the AI remembers what you talked about earlier, and we make sure
+    the AI always knows what time it is for proper task scheduling.
     """
     try:
-        # Convert UUID to string to avoid type conflicts
         user_id_str = str(user_id)
         
         runner = _initialize_runner(settings.SESSIONS_DATABASE_URL)
@@ -50,18 +42,7 @@ async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
         raise
 
 async def get_session_id(user_id: UUID, db_url: str) -> str:
-    """
-    Get or create a session ID for the user.
-    
-    Args:
-        user_id: Unique identifier for the user
-        db_url: Database connection URL
-        
-    Returns:
-        str: Session ID
-    """
     try:
-        # Convert UUID to string
         user_id_str = str(user_id)
         
         session_service = DatabaseSessionService(db_url=db_url)
@@ -85,7 +66,6 @@ async def get_session_id(user_id: UUID, db_url: str) -> str:
         raise
 
 def _initialize_runner(db_url: str) -> Runner:
-    """Initialize the Runner with required configurations."""
     return Runner(
         app_name='tasky-ai',
         agent=root_agent,
@@ -93,7 +73,6 @@ def _initialize_runner(db_url: str) -> Runner:
     )
 
 def _create_user_message(message: str) -> types.Content:
-    """Create a formatted user message."""
     return types.Content(
         role='user',
         parts=[types.Part(text=message)]

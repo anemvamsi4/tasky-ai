@@ -13,42 +13,35 @@ logger = logging.getLogger(__name__)
 
 def parse_whatsapp_message(body: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Parse username, phone number and message from WhatsApp webhook payload.
+    Take the messy WhatsApp webhook data and extract what we actually need.
     
-    Args:
-        body: The webhook request body from WhatsApp
-        
-    Returns:
-        Dictionary containing username, phone number, message text, message type, and audio_id if applicable
+    WhatsApp sends us a complex nested JSON structure. This function digs through
+    all that complexity to find the actual message, who sent it, and what type it is.
+    
+    Returns a clean dictionary with just the info we care about.
     """
     try:
-        # Extract entry
         entry = body.get("entry", [])
         if not entry or len(entry) == 0:
             return {"username": "Unknown User", "phone_number": "", "message": "", "type": "text", "audio_id": None}
             
-        # Extract changes
         changes = entry[0].get("changes", [])
         if not changes or len(changes) == 0:
             return {"username": "Unknown User", "phone_number": "", "message": "", "type": "text", "audio_id": None}
             
-        # Extract value
         value = changes[0].get("value", {})
         if not value:
             return {"username": "Unknown User", "phone_number": "", "message": "", "type": "text", "audio_id": None}
             
-        # Extract messages
         messages = value.get("messages", [])
         if not messages or len(messages) == 0:
             return {"username": "Unknown User", "phone_number": "", "message": "", "type": "text", "audio_id": None}
             
-        # Extract the first message
+        # Get the actual message content
         message_data = messages[0]
         
-        # Get the sender's phone number
         phone_number = message_data.get("from", "")
         
-        # Get message type and content
         message_type = message_data.get("type", "text")
         message_text = ""
         audio_id = None
@@ -57,9 +50,8 @@ def parse_whatsapp_message(body: Dict[str, Any]) -> Dict[str, Any]:
             message_text = message_data.get("text", {}).get("body", "")
         elif message_type == "audio":
             audio_id = message_data.get("audio", {}).get("id", "")
-            message_text = ""  # Will be filled after speech-to-text conversion
+            message_text = ""
             
-        # Get contact name if available
         contact_name = "Unknown User"
         contacts = value.get("contacts", [])
         if contacts and len(contacts) > 0:
@@ -73,7 +65,7 @@ def parse_whatsapp_message(body: Dict[str, Any]) -> Dict[str, Any]:
             "audio_id": audio_id
         }
     except (KeyError, IndexError, TypeError) as e:
-        # Return default values on error
+        # If anything goes wrong parsing, return safe defaults
         return {
             "username": "Unknown User",
             "phone_number": "",
@@ -84,24 +76,20 @@ def parse_whatsapp_message(body: Dict[str, Any]) -> Dict[str, Any]:
 
 async def download_audio_from_whatsapp(audio_id: str, settings: Settings) -> Optional[bytes]:
     """
-    Download audio file from WhatsApp using media ID.
+    Download voice messages from WhatsApp servers.
     
-    Args:
-        audio_id: The WhatsApp media ID for the audio file
-        settings: Application settings containing WhatsApp API credentials
-        
-    Returns:
-        bytes: Audio file content, or None if download failed
+    WhatsApp doesn't give us the audio directly - they give us an ID, and we need
+    to make two API calls: one to get the download URL, then another to actually
+    download the audio file.
     """
     try:
-        # First, get the media URL
         url = f"https://graph.facebook.com/v17.0/{audio_id}"
         headers = {
             "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}"
         }
         
         async with aiohttp.ClientSession() as session:
-            # Get media info
+            # First, ask WhatsApp where to download the actual audio file
             async with session.get(url, headers=headers) as response:
                 if response.status != 200:
                     logger.error(f"Failed to get media info (status {response.status})")
@@ -114,7 +102,7 @@ async def download_audio_from_whatsapp(audio_id: str, settings: Settings) -> Opt
                     logger.error("No media URL found in response")
                     return None
             
-            # Download the actual audio file
+            # Now download the actual audio file
             async with session.get(media_url, headers=headers) as response:
                 if response.status == 200:
                     return await response.read()
@@ -128,37 +116,35 @@ async def download_audio_from_whatsapp(audio_id: str, settings: Settings) -> Opt
 
 async def transcribe_audio_with_groq(audio_data: bytes, settings: Settings) -> Optional[str]:
     """
-    Transcribe audio using Groq's speech-to-text service.
+    Turn voice messages into text using Groq's super-fast Whisper model.
     
-    Args:
-        audio_data: The audio file content as bytes
-        settings: Application settings containing Groq API key
-        
-    Returns:
-        str: Transcribed text, or None if transcription failed
+    This is where the magic happens for voice messages. We save the audio to a
+    temporary file, send it to Groq, and get back what the person said.
+    
+    Groq's Whisper is incredibly fast and accurate - much better than trying to
+    do speech recognition ourselves.
     """
     try:
         client = AsyncGroq(api_key=settings.GROQ_API_KEY)
         
-        # Create a temporary file for the audio
+        # We need to save the audio to a file because that's what the API expects
         with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_file:
             temp_file.write(audio_data)
             temp_file_path = temp_file.name
         
         try:
-            # Transcribe the audio
+            # Send the audio file to Groq for transcription
             with open(temp_file_path, "rb") as audio_file:
                 transcription = await client.audio.transcriptions.create(
                     file=audio_file,
-                    model="whisper-large-v3",
+                    model="whisper-large-v3",  # The best Whisper model available
                     response_format="text"
                 )
                 
-                # The response should be a string with the transcribed text
                 return transcription.strip() if transcription else None
                 
         finally:
-            # Clean up the temporary file
+            # Clean up the temporary file so we don't fill up the disk
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
                 
@@ -167,19 +153,8 @@ async def transcribe_audio_with_groq(audio_data: bytes, settings: Settings) -> O
         return None
 
 async def process_whatsapp_audio_message(audio_id: str, settings: Settings) -> Optional[str]:
-    """
-    Download and transcribe a WhatsApp audio message.
-    
-    Args:
-        audio_id: The WhatsApp media ID for the audio file
-        settings: Application settings
-        
-    Returns:
-        str: Transcribed text, or None if processing failed
-    """
     logger.info(f"Processing audio message with ID: {audio_id}")
     
-    # Download the audio file
     audio_data = await download_audio_from_whatsapp(audio_id, settings)
     if not audio_data:
         logger.error("Failed to download audio file")
@@ -190,7 +165,6 @@ async def process_whatsapp_audio_message(audio_id: str, settings: Settings) -> O
     if len(audio_data) > 25 * 1024 * 1024:
         logger.warning(f"Audio file too large: {len(audio_data)} bytes")
     
-    # Transcribe the audio
     transcription = await transcribe_audio_with_groq(audio_data, settings)
     if not transcription:
         logger.error("Failed to transcribe audio")
@@ -206,17 +180,6 @@ async def process_whatsapp_audio_message(audio_id: str, settings: Settings) -> O
     return transcription
 
 async def send_whatsapp_message(phone_number: str, message: str, settings: Settings) -> bool:
-    """
-    Send a WhatsApp message to a specified phone number.
-    
-    Args:
-        phone_number: The recipient's phone number
-        message: The message text to send
-        settings: Application settings containing WhatsApp API credentials and configuration
-        
-    Returns:
-        bool: True if message was sent successfully, False otherwise
-    """
     url = f"https://graph.facebook.com/v17.0/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {settings.WHATSAPP_ACCESS_TOKEN}",

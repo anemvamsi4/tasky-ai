@@ -24,7 +24,6 @@ async def verify_webhook(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
     hub_challenge: str = Query(None, alias="hub.challenge")
 ):
-    """Handle webhook verification from Meta (Whatsapp)."""
     if not all([hub_mode, hub_verify_token, hub_challenge]):
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Missing query parameters")
     
@@ -35,7 +34,6 @@ async def verify_webhook(
 
 @app.post("/webhook")
 async def handle_webhook(request: Request):
-    """Handle incoming webhook events from Meta (Whatsapp)."""
     body_bytes = await request.body()
 
     try:

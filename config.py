@@ -9,6 +9,13 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
+    """
+    Application settings loaded from environment variables.
+    
+    This class automatically loads configuration from .env files and
+    environment variables, with validation to make sure everything
+    is set up correctly before the app starts.
+    """
 
     PORT : int = 8080
 

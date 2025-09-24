@@ -19,6 +19,16 @@ app = FastAPI()
 
 @app.post("/daily-summary")
 async def send_daily_summary(req: Request):
+    """
+    Send personalized daily summaries to all users.
+    
+    This is typically called by a scheduler (like a cron job) every morning.
+    It looks at what each user has planned for today and sends them a helpful
+    summary with motivation and priority suggestions.
+    
+    This is autonomous AI in action - the system takes initiative to help users
+    without them having to ask for it.
+    """
     
     date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     

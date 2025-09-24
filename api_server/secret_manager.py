@@ -6,15 +6,11 @@ from google.api_core import exceptions
 logger = logging.getLogger(__name__)
 
 class SecretManager:
-    """Google Secret Manager client for dynamic prompts."""
-    
     def __init__(self, project_id: str):
-        """Initialize Secret Manager client."""
         self.project_id = project_id
         self.client = secretmanager.SecretManagerServiceClient()
     
     def get_secret(self, secret_name: str) -> Optional[str]:
-        """Get a secret from Google Secret Manager."""
         try:
             name = f"projects/{self.project_id}/secrets/{secret_name}/versions/latest"
             response = self.client.access_secret_version(request={"name": name})
@@ -26,24 +22,19 @@ class SecretManager:
             logger.error(f"Error retrieving secret {secret_name}: {str(e)}")
             return None
 
-# Global instance
 _secret_manager = None
 
 def get_secret_manager(project_id: str, **kwargs) -> SecretManager:
-    """Get or create SecretManager instance."""
     global _secret_manager
     if _secret_manager is None and project_id:
         _secret_manager = SecretManager(project_id)
     return _secret_manager
 
 class PromptManager:
-    """Prompt manager for dynamic prompts."""
-    
     def __init__(self, secret_manager: SecretManager):
         self.secret_manager = secret_manager
     
     def get_tasky_system_prompt(self) -> str:
-        """Get Tasky system prompt or fallback."""
         if self.secret_manager:
             prompt = self.secret_manager.get_secret("tasky-system-prompt")
             if prompt:
@@ -51,7 +42,6 @@ class PromptManager:
         return self._get_default_tasky_prompt()
     
     def get_daily_summary_prompt(self) -> str:
-        """Get daily summary prompt or fallback."""
         if self.secret_manager:
             prompt = self.secret_manager.get_secret("daily-summary-prompt")
             if prompt:
@@ -59,7 +49,6 @@ class PromptManager:
         return self._get_default_daily_summary_prompt()
     
     def _get_default_tasky_prompt(self) -> str:
-        """Default Tasky system prompt."""
         return """
 You are a task manager agent. Your job is to help users manage their tasks effectively.
 You can create, retrieve, update, and delete tasks based on user requests.
