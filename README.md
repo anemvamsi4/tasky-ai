@@ -53,7 +53,7 @@ Tasky AI is an autonomous AI agent that lives in WhatsApp and manages your tasks
 ### The Technology Behind It
 - **WhatsApp Business API** handles all messaging
 - **Google Gemini 2.0 Flash** provides the AI intelligence
-- **Groq Whisper** converts voice messages to text instantly
+- **Google Speech-to-Text** converts voice messages to text instantly
 - **PostgreSQL with Supabase** stores everything securely
 - **Google ADK** manages conversation context and agent behavior
 
@@ -71,7 +71,7 @@ This isn't just a chatbot - it's a true AI agent that makes decisions:
 - **WhatsApp Handler**: Processes incoming messages and webhooks
 - **AI Agent Core**: Uses Google ADK for conversation management
 - **Task Engine**: Handles all CRUD operations with intelligent scheduling
-- **Voice Processor**: Transcribes audio using Groq's Whisper model
+- **Voice Processor**: Transcribes audio using Google Speech-to-Text API
 - **Daily Scheduler**: Autonomous service that sends morning summaries
 - **Session Manager**: Maintains conversation context for each user
 
@@ -79,7 +79,7 @@ This isn't just a chatbot - it's a true AI agent that makes decisions:
 **Backend Framework**: FastAPI with async support
 **AI Platform**: Google Agent Development Kit (ADK)
 **Language Model**: Gemini 2.0 Flash
-**Speech Processing**: Groq Whisper Large V3
+**Speech Processing**: Google Speech-to-Text API
 **Database**: PostgreSQL via Supabase
 **Configuration**: Google Cloud Secret Manager
 **Deployment**: Docker containers
@@ -89,7 +89,7 @@ This isn't just a chatbot - it's a true AI agent that makes decisions:
 ### What You'll Need
 - WhatsApp Business API account
 - Google Cloud Platform account with ADK access
-- Groq API key for voice transcription
+- Google Cloud Speech-to-Text API enabled
 - Supabase project for database
 
 ### Setup Instructions
@@ -118,9 +118,6 @@ VERIFY_TOKEN=your_webhook_verify_token
 WHATSAPP_PHONE_NUMBER_ID=your_phone_id
 WHATSAPP_ACCESS_TOKEN=your_access_token
 WHATSAPP_APP_SECRET=your_app_secret
-
-# Voice Processing
-GROQ_API_KEY=your_groq_api_key
 ```
 
 3. **Setup Database**
@@ -191,7 +188,7 @@ Task Management Tools
 PostgreSQL Database
 
 Parallel Services:
-- Groq Whisper (Voice Processing)
+- Google Speech-to-Text (Voice Processing)
 - Daily Summary Scheduler
 - Google Secret Manager
 ```

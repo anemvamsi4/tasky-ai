@@ -341,15 +341,6 @@ wheels = [
 ]
 
 [[package]]
-name = "distro"
-version = "1.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277 },
-]
-
-[[package]]
 name = "docstring-parser"
 version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -889,23 +880,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/92/2e/ea25914b1ebfde93b6fc4ff46d6864564fba59024e928bdc7de475affc25/greenlet-3.2.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:061dc4cf2c34852b052a8620d40f36324554bc192be474b9e9770e8c042fd735", size = 695355 },
     { url = "https://files.pythonhosted.org/packages/72/60/fc56c62046ec17f6b0d3060564562c64c862948c9d4bc8aa807cf5bd74f4/greenlet-3.2.4-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:44358b9bf66c8576a9f57a590d5f5d6e72fa4228b763d0e43fee6d3b06d3a337", size = 657512 },
     { url = "https://files.pythonhosted.org/packages/e3/a5/6ddab2b4c112be95601c13428db1d8b6608a8b6039816f2ba09c346c08fc/greenlet-3.2.4-cp314-cp314-win_amd64.whl", hash = "sha256:e37ab26028f12dbb0ff65f29a8d3d44a765c61e729647bf2ddfbbed621726f01", size = 303425 },
-]
-
-[[package]]
-name = "groq"
-version = "0.31.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "distro" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "sniffio" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/e9/f5d523ae8c78aa375addf44d1f64206271d43e6b42d4e5ce3dc76563a75b/groq-0.31.1.tar.gz", hash = "sha256:4d611e0100cb22732c43b53af37933a1b8a5c5a18fa96132fee14e6c15d737e6", size = 141400 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/7d/877dbef7d72efacc657777b2e7897baa7cc7fcd0905f1b4a6423269e12a1/groq-0.31.1-py3-none-any.whl", hash = "sha256:536bd5dd6267dea5b3710e41094c0479748da2d155b9e073650e94b7fb2d71e8", size = 134903 },
 ]
 
 [[package]]
@@ -2057,7 +2031,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "google-adk" },
     { name = "google-cloud-secret-manager" },
-    { name = "groq" },
+    { name = "google-cloud-speech" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
     { name = "python-multipart" },
@@ -2072,7 +2046,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "google-adk", specifier = ">=1.14.1" },
     { name = "google-cloud-secret-manager", specifier = ">=2.18.1" },
-    { name = "groq", specifier = ">=0.13.0" },
+    { name = "google-cloud-speech", specifier = ">=2.27.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pydantic", specifier = ">=2.11.9" },
     { name = "python-multipart", specifier = ">=0.0.20" },

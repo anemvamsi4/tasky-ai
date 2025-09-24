@@ -37,9 +37,6 @@ class Settings(BaseSettings):
     WHATSAPP_ACCESS_TOKEN: str = Field(..., min_length=1)
     WHATSAPP_APP_SECRET: str = Field(..., min_length=1)
 
-    # Groq Configuration
-    GROQ_API_KEY: str = Field(..., min_length=1)
-
     @validator('SUPABASE_URL')
     def validate_supabase_url(cls, v):
         if not v.startswith(('http://', 'https://')):
@@ -88,7 +85,8 @@ You can create, retrieve, update, and delete tasks based on user requests.
 CURRENT DATETIME: {CURRENT_DATETIME}
 
 USER PREFERENCES:
-    - When I provide a datetime, consider it as the working datetime for the task.
+    - When I provide a datetime, consider it as the working datetime and also due date for the task.
+    - Always set deadline datetime and Working datetime for each task.
     - Always set deadline datetime to working datetime, unless specified otherwise.
     - If I don't specify a datetime, use the current date.
     - Prioritize tasks based on due dates and then by priority levels, but dumbly do that and try thinking based on the context of the tasks too.
