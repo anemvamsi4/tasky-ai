@@ -8,7 +8,7 @@ from starlette.requests import Request as StarletteRequest
 from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 
 from config import _settings
-from api_server.whatsapp import parse_whatsapp_message, send_whatsapp_message
+from api_server.whatsapp import parse_whatsapp_message, send_whatsapp_message, process_whatsapp_audio_message
 from api_server.database import get_user_id_by_phone
 from api_server.tasky_ai import call_tasky
 from api_server.utils import verify_whatsapp_signature, is_valid_whatsapp_message
@@ -73,10 +73,44 @@ async def handle_webhook(request: Request):
         contact_name = data.get("username")
         phone_number = data.get("phone_number")
         message_text = data.get("message")
+        message_type = data.get("type", "text")
+        audio_id = data.get("audio_id")
 
         user_id = get_user_id_by_phone(
             phone_number, contact_name
         )
+
+        # Process audio messages
+        if message_type == "audio" and audio_id:
+            logger.info(f"Processing audio message from {contact_name} ({phone_number})")
+            
+            # Transcribe the audio message
+            transcription = await process_whatsapp_audio_message(audio_id, _settings)
+            
+            if transcription:
+                message_text = transcription
+                logger.info(f"Audio transcribed successfully: {transcription[:100]}...")
+
+                await send_whatsapp_message(
+                    phone_number=phone_number,
+                    message=f"You said: \n{transcription}",
+                    settings=_settings
+                )
+            else:
+                logger.error("Failed to transcribe audio message")
+                await send_whatsapp_message(
+                    phone_number=phone_number,
+                    message="Sorry, I couldn't process your audio message. Please try sending a text message instead.",
+                    settings=_settings
+                )
+                return JSONResponse(status_code=HTTP_200_OK,
+                                    content={"status": "error", "detail": "Audio transcription failed"})
+
+        # Skip processing if no message text (for non-text, non-audio messages)
+        if not message_text:
+            logger.info(f"No message text found for message type: {message_type}")
+            return JSONResponse(status_code=HTTP_200_OK,
+                                content={"status": "ignored", "detail": "No processable content"})
 
         # Call Tasky agent
         agent_response = await call_tasky(
