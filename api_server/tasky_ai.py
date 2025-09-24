@@ -38,9 +38,12 @@ async def call_tasky(user_id: UUID, message: str, settings: Settings) -> str:
             new_message=_create_user_message(message)
         ):
             if event.is_final_response():
-                return event.content.parts[0].text
+                if event.content and event.content.parts and event.content.parts[0].text:
+                    return event.content.parts[0].text
+                else:
+                    logger.warning("Final response received but no text content available")
                 
-        raise Exception("No response generated from agent")
+        raise Exception("No valid response generated from agent")
         
     except Exception as e:
         logger.error(f"Error in call_tasky: {str(e)}")
@@ -58,7 +61,7 @@ async def get_session_id(user_id: UUID, db_url: str) -> str:
         str: Session ID
     """
     try:
-        # Convert UUID to string to avoid type conflicts with the database
+        # Convert UUID to string
         user_id_str = str(user_id)
         
         session_service = DatabaseSessionService(db_url=db_url)
@@ -116,12 +119,10 @@ def generate_daily_summary(date: str, user_name: str, tasks: list) -> str:
     """
 
     try:
-        genai_client = Client(api_key=_settings.GOOGLE_GENAI_API_KEY)
+        genai_client = Client(api_key=_settings.GOOGLE_API_KEY)
         response = genai_client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt,
-            max_output_tokens=500,
-            temperature=0.7
+            contents=prompt
         )
 
         return response.text

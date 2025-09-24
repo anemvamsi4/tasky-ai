@@ -94,14 +94,21 @@ def get_users_tasks_by_date(date: str) -> list:
     try:
         supabase = connect_db()
         
-        # Fetch all users
-        users_query = supabase.table("users").select("id, username, phone_number, contact_name").execute()
-        users = users_query.data
+        logger.info(f"Fetching users and tasks for date: {date}")
         
-        # Fetch all tasks for the date
-        tasks_query = supabase.table("tasks").select("id, title, description, status, duration_mins, user_id")\
-            .eq("working_dt", date).execute()
+        # Fetch all users
+        users_query = supabase.table("users").select("id, username, phone_number").execute()
+        users = users_query.data
+        logger.info(f"Found {len(users)} users")
+        
+        # Fetch all tasks for the date (using date range to handle timezone issues)
+        start_of_day = f"{date}T00:00:00"
+        end_of_day = f"{date}T23:59:59"
+        tasks_query = supabase.table("tasks").select("id, title, description, status, duration_mins, user_id, working_dt, due_dt")\
+            .gte("working_dt", start_of_day)\
+            .lte("working_dt", end_of_day).execute()
         tasks = tasks_query.data
+        logger.info(f"Found {len(tasks)} tasks for date {date}")
         
         # Map tasks to users
         user_map = {user["id"]: user for user in users}
@@ -109,12 +116,24 @@ def get_users_tasks_by_date(date: str) -> list:
             user["tasks"] = []
         
         for task in tasks:
-            user_map[task["user_id"]]["tasks"].append(task)
+            # Only add task if user exists in user_map
+            if task["user_id"] in user_map:
+                user_map[task["user_id"]]["tasks"].append(task)
+            else:
+                logger.warning(f"Task {task['id']} references non-existent user {task['user_id']}")
         
-        return list(user_map.values())
+        result = list(user_map.values())
+        logger.info(f"Returning {len(result)} users with tasks")
+        return result
     
+    except APIError as api_error:
+        logger.exception(f"Supabase API error in get_users_tasks_by_date: {api_error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database API error: {str(api_error)}"
+        )
     except Exception as e:
-        logger.exception("Error in get_users_tasks_by_date")
+        logger.exception(f"Unexpected error in get_users_tasks_by_date: {e}")
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve user tasks"
