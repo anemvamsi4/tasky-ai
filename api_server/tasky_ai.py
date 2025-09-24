@@ -102,21 +102,14 @@ def _create_user_message(message: str) -> types.Content:
 def generate_daily_summary(date: str, user_name: str, tasks: list) -> str:
     """Generate a daily summary using Google Generative AI."""
     
-    prompt = f"""
-    You are an AI assistant that generates a clear and concise daily summary for a user named {user_name}.
-    Today's date is {date}.
-    Here are the tasks for today:
-    {tasks}
-
-    INSTRUCTIONS:
-    - If user name is not provided accurately, use a generic greeting.
-    - Summarize the tasks in a friendly and engaging manner.
-    - Highlight any important or urgent tasks.
-    - Generate in Plain Text only, no markdown and seperate sections with new lines.
-    - Keep it Short and clear with simple language.
-    - It should motivate the user to complete their tasks in a creative way.
-    - Avoid using bullet points or numbered lists.
-    """
+    # Get dynamic prompt from Secret Manager
+    prompt_template = _settings.get_dynamic_prompt('daily_summary')
+    
+    prompt = prompt_template.format(
+        date=date,
+        user_name=user_name,
+        tasks=tasks
+    )
 
     try:
         genai_client = Client(api_key=_settings.GOOGLE_API_KEY)
